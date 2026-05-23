@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lapor Kerusakan - SmartRoad Bogor</title>
+  <link rel="stylesheet" href="output.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <header class="bg-indigo-600 text-white p-4 shadow-md">
+    <div class="max-w-md mx-auto flex items-center gap-2">
+      <i data-lucide="map-pin"></i>
+      <h1 class="text-xl font-bold">SmartRoad Lapor</h1>
+    </div>
+  </header>
+
+  <!-- Form Area -->
+  <main class="flex-1 max-w-md mx-auto w-full p-4 sm:p-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-xl font-bold mb-1">Kirim Laporan Baru</h2>
+      <p class="text-sm text-gray-500 mb-6">Bantu kami memetakan jalan dan trotoar rusak di Kota Bogor.</p>
+
+      <form id="laporForm" class="space-y-5">
+        
+        <!-- Jenis Kerusakan -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kerusakan</label>
+          <select id="jenis" name="jenis" required class="w-full rounded-lg border-gray-300 border p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <option value="">Pilih jenis...</option>
+            <option value="Jalan Berlubang">Jalan Berlubang</option>
+            <option value="Trotoar Amblas">Trotoar Amblas/Rusak</option>
+            <option value="Aspal Terkelupas">Aspal Terkelupas</option>
+            <option value="Genangan Air">Saluran Air/Genangan</option>
+          </select>
+        </div>
+
+        <!-- Foto Bukti -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Unggah Foto Bukti</label>
+          <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-indigo-500 transition-colors bg-gray-50">
+            <div class="space-y-1 text-center">
+              <i data-lucide="camera" class="mx-auto h-8 w-8 text-gray-400"></i>
+              <div class="flex text-sm text-gray-600 justify-center">
+                <label for="foto" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                  <span>Pilih file foto</span>
+                  <input id="foto" name="foto" type="file" accept="image/*" required class="sr-only">
+                </label>
+              </div>
+              <p class="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+            </div>
+          </div>
+          <p id="fileName" class="text-xs text-indigo-600 mt-2 text-center font-medium"></p>
+        </div>
+
+        <!-- Deskripsi -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan / Patokan Lokasi</label>
+          <textarea id="deskripsi" name="deskripsi" rows="3" required placeholder="Contoh: Di depan halte rumah sakit..." class="w-full rounded-lg border-gray-300 border p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Lokasi Koordinat (Otomatis) -->
+        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-medium text-indigo-900">Titik Koordinat Lokasi</label>
+            <button type="button" onclick="getLocation()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 flex items-center gap-1 transition-colors">
+              <i data-lucide="crosshair" class="w-3 h-3"></i> Deteksi
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input type="text" id="lat" name="lat" readonly placeholder="Latitude" class="w-full text-sm rounded bg-white border-gray-200 p-2 text-gray-500" required>
+            <input type="text" id="lng" name="lng" readonly placeholder="Longitude" class="w-full text-sm rounded bg-white border-gray-200 p-2 text-gray-500" required>
+          </div>
+          <p class="text-xs text-indigo-600 mt-2">*Izinkan akses lokasi pada browser Anda.</p>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex justify-center items-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i> Kirim Laporan
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    // Menampilkan nama file yang dipilih
+    document.getElementById('foto').addEventListener('change', function(e) {
+      if(e.target.files.length > 0) {
+        document.getElementById('fileName').textContent = e.target.files[0].name;
+      }
+    });
+
+    // Mengambil Koordinat GPS
+    function getLocation() {
+      const latInput = document.getElementById('lat');
+      const lngInput = document.getElementById('lng');
+      
+      if (navigator.geolocation) {
+        latInput.value = "Mencari...";
+        lngInput.value = "Mencari...";
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            latInput.value = position.coords.latitude;
+            lngInput.value = position.coords.longitude;
+          },
+          (error) => {
+            alert("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.");
+            latInput.value = "";
+            lngInput.value = "";
+          }
+        );
+      } else {
+        alert("Geolocation tidak didukung di browser ini.");
+      }
+    }
+
+    // Handle Form Submit dengan AJAX
+    document.getElementById('laporForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const form = e.target;
+      const submitBtn = document.getElementById('submitBtn');
+      const formData = new FormData(form);
+
+      // Ubah state tombol
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Mengirim...';
+      lucide.createIcons();
+
+      try {
+        const response = await fetch('/api/reports', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if(result.success) {
+          alert('Terima kasih! Laporan Anda berhasil dikirim.');
+          form.reset();
+          document.getElementById('fileName').textContent = '';
+        } else {
+          alert('Gagal mengirim laporan.');
+        }
+      } catch (error) {
+        alert('Terjadi kesalahan jaringan.');
+      } finally {
+        // Kembalikan state tombol
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Kirim Laporan';
+        lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>

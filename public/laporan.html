@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cetak Laporan - SmartRoad Bogor</title>
+  <link rel="stylesheet" href="output.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    /* CSS Optimalisasi Cetak Lembar Kerja A4 */
+    @media print {
+      .no-print, aside, header, nav, button, input, select {
+        display: none !important;
+      }
+      body, main, .print-container {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      #printArea {
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+      }
+      table {
+        width: 100% !important;
+        table-layout: fixed !important;
+      }
+      th, td {
+        word-wrap: break-word !important;
+        white-space: normal !important;
+        padding: 8px !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex">
+
+  <aside class="w-64 bg-white shadow-xl hidden md:block no-print">
+    <div class="p-6 border-b border-gray-100 flex items-center gap-2 text-indigo-600 font-bold text-xl">
+      <i data-lucide="map-pin"></i> <span>SmartRoad Admin</span>
+    </div>
+    <nav class="p-4 space-y-2">
+      <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 transition-all">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i> <span>Dashboard</span>
+      </a>
+      <a href="/kelola" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 transition-all">
+        <i data-lucide="file-text" class="w-5 h-5"></i> <span>Kelola Laporan</span>
+      </a>
+      <a href="/laporan" class="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 text-indigo-600 transition-all">
+        <i data-lucide="printer" class="w-5 h-5"></i> <span class="font-medium">Laporan Harian</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="flex-1 flex flex-col h-screen overflow-auto p-4 sm:p-8 print-container">
+    
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6 no-print flex flex-col lg:flex-row gap-4 justify-between items-center">
+      <div>
+        <h1 class="text-xl font-bold text-gray-800">Pusat Cetak Rekapitulasi</h1>
+        <p class="text-xs text-gray-500 mt-0.5">Pilih tanggal spesifik untuk menyusun dokumen laporan harian resmi.</p>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+        <input type="date" id="filterTanggal" onchange="filterDataHarian()" class="border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700">
+        
+        <button onclick="eksporKeExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 font-medium text-sm transition-colors shadow-sm">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Ekspor Excel (.csv)
+        </button>
+
+        <button onclick="unduhPDF()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium text-sm transition-colors shadow-sm">
+          <i data-lucide="download" class="w-4 h-4"></i> Unduh PDF
+        </button>
+      </div>
+    </div>
+
+    <div id="printArea" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+      
+      <div class="text-center mb-6">
+        <h2 class="text-xl font-bold tracking-wide text-gray-900">REKAPITULASI DATA ADUAN HARIAN SMARTROAD</h2>
+        <p class="text-sm text-gray-600 uppercase font-medium">Pemerintah Kota Bogor — Dinas Pekerjaan Umum dan Penataan Ruang</p>
+        <p class="text-xs text-indigo-600 font-semibold mt-1" id="labelHariIni">Menampilkan Semua Riwayat Laporan</p>
+        <hr class="mt-4 border-gray-800 border-b-2">
+      </div>
+
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b-2 border-gray-300 bg-gray-50 text-gray-700">
+            <th class="py-3 px-2 font-bold w-24">ID LAPORAN</th>
+            <th class="py-3 px-2 font-bold w-24">TANGGAL</th>
+            <th class="py-3 px-2 font-bold w-40">KATEGORI</th>
+            <th class="py-3 px-2 font-bold">KETERANGAN / PATOKAN LOKASI</th>
+            <th class="py-3 px-2 font-bold w-24 text-center">STATUS</th>
+          </tr>
+        </thead>
+        <tbody id="reportPrintTableBody" class="divide-y divide-gray-200 text-gray-800">
+          <tr><td colspan="5" class="text-center py-8 text-gray-400 italic">Memuat data log database...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    // State Manajemen Data Tingkat Global
+    let masterData = [];
+    let currentDataList = []; // Menyimpan data yang saat ini aktif di layar (terfilter/semua)
+
+    // Proteksi Token Keamanan Sesi
+    const token = sessionStorage.getItem('adminToken');
+    if (!token) { window.location.href = '/login'; }
+
+    // Ambil Data dari API saat halaman dimuat
+    async function fetchReportLogs() {
+      try {
+        const response = await fetch('/api/reports');
+        const result = await response.json();
+        
+        if (result.success) {
+          masterData = result.data;
+          currentDataList = [...masterData]; // Standar awal memuat seluruh data
+          renderPrintTable(currentDataList);
+        } else {
+          document.getElementById('reportPrintTableBody').innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Gagal mengambil data log.</td></tr>`;
+        }
+      } catch (error) {
+        console.error("Gagal sinkronisasi data:", error);
+      }
+    }
+
+    // Fungsi Render isi Tabel
+    function renderPrintTable(dataList) {
+      const tbody = document.getElementById('reportPrintTableBody');
+      tbody.innerHTML = '';
+
+      if (dataList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-400 italic">Tidak ada rekaman data aduan untuk parameter ini.</td></tr>`;
+        return;
+      }
+
+      dataList.forEach(r => {
+        const dateObj = new Date(r.tanggal);
+        const formattedDate = !isNaN(dateObj) ? `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}` : '-';
+
+        const row = `
+          <tr class="align-top">
+            <td class="py-3 px-2 font-mono font-bold text-gray-900">${r.id}</td>
+            <td class="py-3 px-2 text-gray-600">${formattedDate}</td>
+            <td class="py-3 px-2 font-semibold text-slate-900">${r.jenis || '-'}</td>
+            <td class="py-3 px-2 leading-relaxed text-justify">${r.deskripsi || '-'}</td>
+            <td class="py-3 px-2 text-center font-medium">${r.status}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    // Filter Khusus Laporan Harian berdasarkan Komponen Kalender
+    function filterDataHarian() {
+      const datePickerValue = document.getElementById('filterTanggal').value;
+      const label = document.getElementById('labelHariIni');
+
+      if (!datePickerValue) {
+        label.innerText = "Menampilkan Semua Riwayat Laporan";
+        currentDataList = [...masterData];
+        renderPrintTable(currentDataList);
+        return;
+      }
+
+      const selectedDate = new Date(datePickerValue);
+      
+      // Filter data lokal
+      currentDataList = masterData.filter(r => {
+        const itemDate = new Date(r.tanggal);
+        return itemDate.getDate() === selectedDate.getDate() &&
+               itemDate.getMonth() === selectedDate.getMonth() &&
+               itemDate.getFullYear() === selectedDate.getFullYear();
+      });
+
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      label.innerText = `Laporan Harian: ${selectedDate.toLocaleDateString('id-ID', options)}`;
+      
+      renderPrintTable(currentDataList);
+    }
+
+    // Fungsi Mengonversi Area HTML menjadi File PDF
+    function unduhPDF() {
+      const element = document.getElementById('printArea');
+      const datePickerValue = document.getElementById('filterTanggal').value;
+      const namaFile = datePickerValue ? `Rekap_SmartRoad_${datePickerValue}.pdf` : `Rekap_SmartRoad_Semua.pdf`;
+
+      const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     namaFile,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+
+    // Fungsi Ekspor Data Terpilih ke File Excel/CSV kompatibel
+    function eksporKeExcel() {
+      if (currentDataList.length === 0) {
+        alert('Tidak ada data yang tersedia untuk diekspor pada parameter tanggal ini.');
+        return;
+      }
+
+      // 1. Buat Judul Kolom (Header) baris pertama file Excel
+      let csvContent = "ID LAPORAN,TANGGAL,KATEGORI KERUSAKAN,KETERANGAN / PATOKAN LOKASI,STATUS PENANGANAN\n";
+
+      // 2. Susun data baris demi baris
+      currentDataList.forEach(r => {
+        const dateObj = new Date(r.tanggal);
+        const formattedDate = !isNaN(dateObj) ? `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}` : '-';
+        
+        // Membersihkan karakter koma (,) dan enter (\n) di deskripsi agar kolom CSV tidak pecah berantakan
+        let cleanDeskripsi = r.deskripsi ? r.deskripsi.replace(/,/g, ';').replace(/\n/g, ' ') : '-';
+        let cleanJenis = r.jenis ? r.jenis.replace(/,/g, ';') : '-';
+
+        csvContent += `"${r.id}","${formattedDate}","${cleanJenis}","${cleanDeskripsi}","${r.status}"\n`;
+      });
+
+      // 3. Tambahkan UTF-8 BOM (\xEF\xBB\xBF) supaya Microsoft Excel langsung mengenali tanda baca dan delimiter dengan rapi
+      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      const datePickerValue = document.getElementById('filterTanggal').value;
+      const namaFile = datePickerValue ? `Rekap_SmartRoad_${datePickerValue}.csv` : `Rekap_SmartRoad_Semua.csv`;
+
+      // 4. Unduh Otomatis melalui trigger klik virtual bunderan tautan
+      const link = document.createElement("a");
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", namaFile);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchReportLogs);
+  </script>
+</body>
+</html>

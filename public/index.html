@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id" class="transition-colors duration-300">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartRoad Dashboard - WebGIS Bogor</title>
+  <link rel="stylesheet" href="output.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-slate-900 dark:text-gray-100 font-sans flex min-h-screen transition-colors duration-300 overflow-hidden">
+
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 shadow-xl transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+    <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+      <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl">
+        <i data-lucide="map-pin" class="w-6 h-6"></i>
+        <span>SmartRoad</span>
+      </div>
+      <button onclick="toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <nav class="p-4 space-y-2">
+      <a href="#" class="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 transition-all duration-200 group">
+        <i data-lucide="layout-dashboard" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        <span class="font-medium">Dashboard</span>
+      </a>
+      <!-- <a href="#" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-700/50 transition-all duration-200 group">
+        <i data-lucide="map" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        <span class="font-medium">Peta Laporan (GIS)</span>
+      </a> -->
+      <a href="/kelola" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-700/50 transition-all duration-200 group">
+        <i data-lucide="file-text" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        <span class="font-medium">Kelola Laporan</span>
+      </a>
+      <a href="/laporan" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-700/50 transition-all duration-200 group">
+        <i data-lucide="printer" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        <span class="font-medium">Laporan Harian</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-gray-900/50 dark:bg-black/50 z-40 hidden backdrop-blur-sm transition-opacity"></div>
+
+  <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <header class="flex items-center justify-between p-4 sm:p-6 bg-white dark:bg-slate-800 shadow-sm border-b border-gray-100 dark:border-slate-700 z-10 transition-colors duration-300">
+      <div class="flex items-center gap-4">
+        <button onclick="toggleSidebar()" class="md:hidden p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <div class="relative hidden sm:block group">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+          <input type="text" placeholder="Cari laporan atau lokasi..." class="pl-10 pr-4 py-2 w-64 rounded-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:focus:ring-indigo-400/50 transition-all text-sm" />
+        </div>
+      </div>
+      <div class="flex items-center gap-3 sm:gap-4">
+        <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+          <i id="theme-icon" data-lucide="moon" class="w-5 h-5 text-slate-600 dark:text-yellow-400"></i>
+        </button>
+        
+        <div class="relative">
+          <button onclick="toggleNotif()" class="p-2 rounded-full bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors relative">
+            <i data-lucide="bell" class="w-5 h-5 text-slate-600 dark:text-gray-300"></i>
+            <span id="notif-dot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-700 animate-pulse"></span>
+          </button>
+          
+          <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden z-50 transition-all">
+            <div class="p-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex justify-between items-center">
+              <span class="font-bold text-sm text-gray-800 dark:text-white">Notifikasi Baru</span>
+              <button onclick="clearNotif()" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">Tandai sudah dibaca</button>
+            </div>
+            <div id="notif-list" class="max-h-64 overflow-y-auto custom-scrollbar">
+              <div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400">Belum ada aduan baru.</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2 border-r border-gray-200 dark:border-slate-700 pr-2">
+          <span id="adminGreeting" class="text-sm font-medium hidden sm:block text-gray-700 dark:text-gray-200">Memuat...</span>
+          <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-md"></div>
+        </div>
+
+        <button onclick="handleLogout()" class="p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Keluar dari Sistem">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
+      
+      <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Ringkasan Infrastruktur</h1>
+        <p id="dashboardSubHeading" class="text-gray-500 dark:text-gray-400 mt-1">Pemetaan Risiko Jalan & Trotoar Kota Bogor</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-500/20 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Laporan</p>
+              <h3 id="statTotal" class="text-3xl font-bold mt-2 text-gray-800 dark:text-white">0</h3>
+            </div>
+            <div class="p-3 rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-500/10"><i data-lucide="alert-triangle"></i></div>
+          </div>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-red-100 dark:border-red-500/20 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jalan Rusak</p>
+              <h3 id="statJalan" class="text-3xl font-bold mt-2 text-gray-800 dark:text-white">0</h3>
+            </div>
+            <div class="p-3 rounded-xl bg-red-50 text-red-500 dark:bg-red-500/10"><i data-lucide="map"></i></div>
+          </div>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-yellow-100 dark:border-yellow-500/20 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Dalam Proses</p>
+              <h3 id="statProses" class="text-3xl font-bold mt-2 text-gray-800 dark:text-white">0</h3>
+            </div>
+            <div class="p-3 rounded-xl bg-yellow-50 text-yellow-500 dark:bg-yellow-500/10"><i data-lucide="clock"></i></div>
+          </div>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-emerald-100 dark:border-emerald-500/20 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Telah Diperbaiki</p>
+              <h3 id="statSelesai" class="text-3xl font-bold mt-2 text-gray-800 dark:text-white">0</h3>
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10"><i data-lucide="check-circle"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold">Peta Persebaran Risiko (WebGIS)</h2>
+            <a href="/SmartRoad" target="_blank" class="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1">
+              Tambah Laporan <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            </a>
+          </div>
+          <div id="map" class="flex-1 rounded-xl min-h-[400px] z-0 border border-gray-200 dark:border-slate-700"></div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+          <h2 class="text-lg font-bold mb-6">Laporan per Kategori</h2>
+          <div class="relative h-64">
+            <canvas id="myChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden mb-8">
+        <div class="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+          <h2 class="text-lg font-bold">Laporan Masuk Terbaru</h2>
+          <button onclick="fetchDashboardData()" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Muat Ulang Data">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400">
+              <tr>
+                <th class="px-6 py-4 font-medium">ID Laporan</th>
+                <th class="px-6 py-4 font-medium">Jenis Kerusakan</th>
+                <th class="px-6 py-4 font-medium">Keterangan</th>
+                <th class="px-6 py-4 font-medium">Status</th>
+                <th class="px-6 py-4 font-medium">Tanggal</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-gray-100 dark:divide-slate-700/50">
+              <tr><td colspan="5" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // ==========================================
+    // INISIALISASI UI & TEMA
+    // ==========================================
+    lucide.createIcons();
+
+    // ==========================================
+    // VALIDASI BEARER TOKEN & PERSONALISASI USER
+    // ==========================================
+    const token = sessionStorage.getItem('adminToken');
+    if (!token) {
+      // Jika tidak ada token sesi, alihkan langsung ke halaman login
+      window.location.href = '/login';
+    } else {
+      try {
+        // Melakukan dekode payload JWT secara manual di sisi klien
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const payload = JSON.parse(jsonPayload);
+        
+        // Integrasikan username ke elemen HTML yang telah disiapkan
+        document.getElementById('adminGreeting').textContent = `Hi, ${payload.username}`;
+        document.getElementById('dashboardSubHeading').textContent = `Selamat datang kembali, ${payload.username}. Pemetaan Risiko Jalan & Trotoar Kota Bogor`;
+      } catch (error) {
+        console.error("Token tidak valid atau rusak:", error);
+        sessionStorage.removeItem('adminToken');
+        window.location.href = '/login';
+      }
+    }
+
+    // Fungsi untuk menghapus sesi token (Logout)
+    function handleLogout() {
+      if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+        sessionStorage.removeItem('adminToken');
+        window.location.href = '/login';
+      }
+    }
+
+    let isDarkMode = false;
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const themeIcon = document.getElementById('theme-icon');
+      isDarkMode = !isDarkMode;
+      
+      if(isDarkMode) {
+        html.classList.add('dark');
+        themeIcon.setAttribute('data-lucide', 'sun');
+      } else {
+        html.classList.remove('dark');
+        themeIcon.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+      updateChartTheme(); 
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('-translate-x-full');
+      overlay.classList.toggle('hidden');
+      setTimeout(() => map.invalidateSize(), 350); // Mencegah peta terpotong
+    }
+
+    // ==========================================
+    // PETA (LEAFLET) & GRAFIK (CHART.JS) SETUP
+    // ==========================================
+    const map = L.map('map').setView([-6.5971, 106.8060], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // LayerGroup untuk menampung marker (agar mudah dihapus saat refresh data)
+    const markerGroup = L.layerGroup().addTo(map);
+
+    const dangerIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+
+    const warningIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+
+    const ctx = document.getElementById('myChart').getContext('2d');
+    let chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: [], datasets: [{ label: 'Jumlah Laporan', data: [], backgroundColor: '#6366f1', borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748b' } },
+          y: { border: { display: false }, grid: { color: '#e2e8f0', drawBorder: false }, ticks: { color: '#64748b', stepSize: 1 } }
+        }
+      }
+    });
+
+    function updateChartTheme() {
+      const textColor = isDarkMode ? '#94a3b8' : '#64748b';
+      const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+      chartInstance.options.scales.x.ticks.color = textColor;
+      chartInstance.options.scales.y.ticks.color = textColor;
+      chartInstance.options.scales.y.grid.color = gridColor;
+      chartInstance.update();
+    }
+
+    // ==========================================
+    // FETCH DATA DARI BACKEND API
+    // ==========================================
+    async function fetchDashboardData() {
+      try {
+        const response = await fetch('/api/reports');
+        const result = await response.json();
+        
+        if (result.success) {
+          const reports = result.data;
+          renderStats(reports);
+          renderMap(reports);
+          renderTable(reports);
+          renderChart(reports);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data dari API:", error);
+        document.getElementById('tableBody').innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Gagal memuat data dari server. Pastikan Backend berjalan.</td></tr>`;
+      }
+    }
+
+    // 1. Render Statistik
+    function renderStats(reports) {
+      document.getElementById('statTotal').textContent = reports.length;
+      document.getElementById('statJalan').textContent = reports.filter(r => r.jenis && r.jenis.includes('Jalan')).length;
+      document.getElementById('statProses').textContent = reports.filter(r => r.status === 'Proses').length;
+      document.getElementById('statSelesai').textContent = reports.filter(r => r.status === 'Selesai').length;
+    }
+
+    // 2. Render Peta
+    function renderMap(reports) {
+      markerGroup.clearLayers(); // Hapus marker lama sebelum menambah yang baru
+      
+      reports.forEach(report => {
+        if(!report.koordinat || report.koordinat.length !== 2) return; // Skip jika koordinat tidak valid
+        
+        const icon = (report.jenis && report.jenis.includes('Jalan')) ? dangerIcon : warningIcon;
+        L.marker(report.koordinat, { icon: icon }).addTo(markerGroup)
+          .bindPopup(`
+            <div class="font-sans min-w-[150px]">
+              <strong class="text-sm block mb-1 text-gray-900">${report.jenis || 'Tidak diketahui'}</strong>
+              <p class="text-xs text-gray-600 mb-2 truncate">${report.deskripsi || ''}</p>
+              <span class="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Status: ${report.status}
+              </span>
+            </div>
+          `);
+      });
+    }
+
+    // 3. Render Tabel
+    function renderTable(reports) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = ''; 
+
+      if (reports.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Belum ada laporan masuk.</td></tr>`;
+        return;
+      }
+
+      const sortedReports = [...reports].reverse();
+
+      sortedReports.forEach(r => {
+        const dateObj = new Date(r.tanggal);
+        const formattedDate = !isNaN(dateObj) ? `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}` : '-';
+        
+        let statusClass = 'bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20';
+        if(r.status === 'Selesai') statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
+        
+        const row = `
+          <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+            <td class="px-6 py-4 font-medium text-indigo-600 dark:text-indigo-400">${r.id}</td>
+            <td class="px-6 py-4">${r.jenis || '-'}</td>
+            <td class="px-6 py-4 max-w-xs truncate" title="${r.deskripsi || ''}">${r.deskripsi || '-'}</td>
+            <td class="px-6 py-4">
+              <span class="px-3 py-1 rounded-full text-xs font-medium border ${statusClass}">${r.status}</span>
+            </td>
+            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${formattedDate}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    // 4. Render Grafik
+    function renderChart(reports) {
+      const counts = {};
+      reports.forEach(r => {
+        if(r.jenis) counts[r.jenis] = (counts[r.jenis] || 0) + 1;
+      });
+
+      chartInstance.data.labels = Object.keys(counts);
+      chartInstance.data.datasets[0].data = Object.values(counts);
+      chartInstance.update();
+    }
+
+    // Panggil fetch saat halaman selesai dimuat
+    document.addEventListener('DOMContentLoaded', fetchDashboardData);
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+   <script>
+    const socket = io();
+    let notifHistory = []; 
+
+    function toggleNotif() {
+      const dropdown = document.getElementById('notif-dropdown');
+      dropdown.classList.toggle('hidden');
+    }
+
+    // Mengubah fungsi agar hanya mengubah status menjadi sudah dibaca (tidak menghapus)
+    function clearNotif() {
+      notifHistory.forEach(n => n.read = true);
+      document.getElementById('notif-dot').classList.add('hidden');
+      renderNotif();
+    }
+
+    // Fungsi untuk mengalihkan admin ke halaman kelola berdasarkan ID Laporan yang diklik
+    function keHalamanKelola(idLaporan) {
+      window.location.href = `/kelola?id=${idLaporan}`;
+    }
+
+    function renderNotif() {
+      const list = document.getElementById('notif-list');
+      if (notifHistory.length === 0) {
+        list.innerHTML = '<div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400">Belum ada aduan baru.</div>';
+        return;
+      }
+
+      list.innerHTML = notifHistory.map(n => {
+        // Jika sudah dibaca, beri efek opasitas meredup (opacity-60)
+        const readStyle = n.read ? 'opacity-60 bg-gray-50/50 dark:bg-slate-700/10' : 'bg-white dark:bg-slate-800 font-medium';
+        const unreadIndicator = n.read ? '' : '<span class="w-2 h-2 rounded-full bg-indigo-600 block shrink-0 mt-1.5"></span>';
+        
+        return `
+          <div onclick="keHalamanKelola('${n.id}')" class="p-3 border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer flex justify-between gap-2 ${readStyle}">
+            <div class="flex-1">
+              <p class="text-sm text-gray-800 dark:text-gray-200">${n.pesan}</p>
+              <div class="flex justify-between items-center mt-2">
+                <span class="text-xs px-2 py-0.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-500/20">${n.jenis}</span>
+                <span class="text-[10px] text-gray-400"><i data-lucide="clock" class="w-3 h-3 inline"></i> ${n.waktu}</span>
+              </div>
+            </div>
+            ${unreadIndicator}
+          </div>
+        `;
+      }).join('');
+      
+      lucide.createIcons();
+    }
+
+    socket.on('laporan_baru', (data) => {
+      document.getElementById('notif-dot').classList.remove('hidden');
+      
+      // Menyisipkan ID laporan yang dikirim dari server
+      notifHistory.unshift({
+        id: data.id,
+        pesan: data.pesan,
+        jenis: data.jenis,
+        waktu: data.waktu,
+        read: false // Status awal belum dibaca
+      });
+      renderNotif();
+      
+      if (typeof fetchDashboardData === 'function') {
+        fetchDashboardData();
+      }
+    });
+  </script>
+</body>
+</html>

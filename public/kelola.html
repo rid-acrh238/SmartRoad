@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kelola Laporan - SmartRoad Bogor</title>
+  <link rel="stylesheet" href="output.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex transition-colors duration-300">
+
+  <aside class="w-64 bg-white shadow-xl hidden md:block no-print">
+    <div class="p-6 border-b border-gray-100 flex items-center gap-2 text-indigo-600 font-bold text-xl">
+      <i data-lucide="map-pin"></i> <span>SmartRoad Admin</span>
+    </div>
+    <nav class="p-4 space-y-2">
+      <a href="/dashboard" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 transition-all">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i> <span>Dashboard</span>
+      </a>
+      <a href="/kelola" class="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 text-indigo-600 transition-all">
+        <i data-lucide="file-text" class="w-5 h-5"></i> <span class="font-medium">Kelola Laporan</span>
+      </a>
+      <a href="/laporan" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-700/50 transition-all duration-200 group">
+        <i data-lucide="printer" class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"></i>
+        <span class="font-medium">Laporan Harian</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="flex-1 flex flex-col h-screen overflow-auto p-4 sm:p-8">
+    
+    <div class="flex justify-between items-center mb-8 no-print">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Manajemen Laporan</h1>
+        <p class="text-gray-500 mt-1">Perbarui status perbaikan, saring klaster data, atau cetak rekap.</p>
+      </div>
+      <button onclick="cetakLaporanHarian()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-medium shadow-sm transition-colors">
+        <i data-lucide="printer" class="w-4 h-4"></i> Cetak Laporan Harian
+      </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-6 no-print flex flex-col md:flex-row gap-4 justify-between items-center">
+      <div class="relative w-full md:w-80">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input type="text" id="searchInp" oninput="handleSearch()" placeholder="Cari ID, jenis, atau deskripsi..." class="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      
+      <div class="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+        <select id="filterStatus" onchange="handleFilter()" class="border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700">
+          <option value="Semua">Semua Status</option>
+          <option value="Menunggu">Status: Menunggu</option>
+          <option value="Proses">Status: Proses</option>
+          <option value="Selesai">Status: Selesai</option>
+        </select>
+
+        <select id="sortOrder" onchange="handleSort()" class="border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700">
+          <option value="terbaru">Tanggal: Terbaru</option>
+          <option value="terlama">Tanggal: Terlama</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="printArea" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+      
+      <div class="hidden print-header pt-8">
+        <h2 class="text-2xl font-bold">REKAPITULASI LAPORAN HARIAN SMARTROAD</h2>
+        <p class="text-gray-600">Pemerintah Kota Bogor - Dinas Pekerjaan Umum dan Penataan Ruang</p>
+        <p class="text-gray-500 text-sm mt-1" id="tanggalCetak"></p>
+        <hr class="my-4 border-gray-400 border-2">
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+          <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+            <tr>
+              <th class="px-6 py-4 font-medium">ID Laporan</th>
+              <th class="px-6 py-4 font-medium">Tanggal</th>
+              <th class="px-6 py-4 font-medium">Jenis & Keterangan</th>
+              <th class="px-6 py-4 font-medium text-center">Foto Bukti</th>
+              <th class="px-6 py-4 font-medium">Status Saat Ini</th>
+              <th class="px-6 py-4 font-medium no-print">Aksi (Update)</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody" class="divide-y divide-gray-100">
+            <tr><td colspan="6" class="text-center py-4 text-gray-500">Memuat data dari database...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 no-print bg-gray-50/50">
+        <p class="text-xs font-medium text-gray-500" id="paginationInfo">Menampilkan 0 - 0 dari 0 data</p>
+        <div class="flex gap-1.5" id="paginationButtons">
+          </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+    
+    // Set format kop tanggal hari ini
+    const today = new Date();
+    document.getElementById('tanggalCetak').innerText = `Tanggal Cetak: ${today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+
+    // State Manajemen Data (Klien)
+    let allReports = [];       
+    let filteredReports = [];  
+    let currentPage = 1;
+    const rowsPerPage = 5;     // Batasan data per halaman (bisa diubah sesuai preferensi)
+
+    // Validasi token login
+    const token = sessionStorage.getItem('adminToken');
+    if (!token) {
+      window.location.href = '/login';
+    }
+
+    async function loadAdminReports() {
+      try {
+        const response = await fetch('/api/reports');
+        const result = await response.json();
+        
+        if (result.success) {
+          allReports = result.data;
+          filteredReports = [...allReports];
+          
+          // --- TAMBAHKAN LOGIKA PENGECEKAN PARAMETER URL DI SINI ---
+          const urlParams = new URLSearchParams(window.location.search);
+          const reportId = urlParams.get('id');
+          if (reportId) {
+            // Masukkan ID laporan ke dalam kotak input pencarian secara otomatis
+            document.getElementById('searchInp').value = reportId;
+          }
+
+          // Terapkan filter awal (Default: Terurut dari tanggal terbaru)
+          applyControls();
+        } else {
+          document.getElementById('adminTableBody').innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red-500">Gagal mengambil data dari server.</td></tr>`;
+        }
+      } catch (error) {
+        console.error("Gagal memuat:", error);
+      }
+    }
+
+    // Fungsi Utama Pemrosesan Data (Search, Filter, & Sort)
+    function applyControls() {
+      const searchVal = document.getElementById('searchInp').value.toLowerCase();
+      const statusVal = document.getElementById('filterStatus').value;
+      const sortVal = document.getElementById('sortOrder').value;
+
+      // 1. Jalankan Filter Status & Filter Search Box
+      filteredReports = allReports.filter(r => {
+        const matchesSearch = 
+          (r.id && r.id.toLowerCase().includes(searchVal)) ||
+          (r.jenis && r.jenis.toLowerCase().includes(searchVal)) ||
+          (r.deskripsi && r.deskripsi.toLowerCase().includes(searchVal));
+          
+        const matchesStatus = (statusVal === 'Semua') || (r.status === statusVal);
+        
+        return matchesSearch && matchesStatus;
+      });
+
+      // 2. Jalankan Aturan Pengurutan (Sorting)
+      if (sortVal === 'terbaru') {
+        filteredReports.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      } else if (sortVal === 'terlama') {
+        filteredReports.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+      }
+
+      // Render ulang visual komponen tabel dan tombol halaman
+      renderTable();
+      renderPagination();
+    }
+
+    // Trigger Aksi Input Komponen Kontrol
+    function handleSearch() { currentPage = 1; applyControls(); }
+    function handleFilter() { currentPage = 1; applyControls(); }
+    function handleSort() { applyControls(); }
+
+    // Render Baris Tabel Sesuai Pembagian Halaman (Slice Data)
+    function renderTable() {
+      const tbody = document.getElementById('adminTableBody');
+      tbody.innerHTML = '';
+
+      if (filteredReports.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">Tidak ada data laporan yang memenuhi kriteria.</td></tr>`;
+        document.getElementById('paginationInfo').textContent = "Menampilkan 0 data";
+        return;
+      }
+
+      // Pembatasan Indeks Array Spasial per Halaman
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const paginatedReports = filteredReports.slice(start, end);
+
+      paginatedReports.forEach(r => {
+        const dateObj = new Date(r.tanggal);
+        const formattedDate = !isNaN(dateObj) ? `${dateObj.getDate()}/${dateObj.getMonth()+1}/${dateObj.getFullYear()}` : '-';
+        
+        let statusColor = 'text-yellow-600 bg-yellow-50';
+        if(r.status === 'Selesai') statusColor = 'text-emerald-600 bg-emerald-50';
+        else if(r.status === 'Proses') statusColor = 'text-blue-600 bg-blue-50';
+
+        const fotoHtml = r.foto 
+          ? `<a href="${r.foto}" target="_blank" title="Klik untuk perbesar">
+               <img src="${r.foto}" alt="Bukti" class="w-14 h-14 object-cover rounded-md border border-gray-300 hover:opacity-80 transition-opacity mx-auto">
+             </a>`
+          : `<span class="text-xs text-gray-400 italic block pt-3">Tanpa foto</span>`;
+
+        const row = `
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 font-medium text-indigo-600">${r.id}</td>
+            <td class="px-6 py-4 text-gray-600">${formattedDate}</td>
+            <td class="px-6 py-4">
+              <p class="font-bold text-gray-800">${r.jenis || '-'}</p>
+              <p class="text-xs text-gray-500 max-w-xs truncate" title="${r.deskripsi || ''}">${r.deskripsi || '-'}</p>
+            </td>
+            <td class="px-6 py-4 text-center">
+              ${fotoHtml}
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-3 py-1 rounded-full text-xs font-medium border ${statusColor} print:border-none print:bg-transparent print:text-black print:p-0">
+                ${r.status}
+              </span>
+            </td>
+            <td class="px-6 py-4 no-print flex gap-2">
+              <select id="status-${r.id}" class="border border-gray-300 rounded p-1 text-sm outline-none focus:border-indigo-500 bg-white">
+                <option value="Menunggu" ${r.status === 'Menunggu' ? 'selected' : ''}>Menunggu</option>
+                <option value="Proses" ${r.status === 'Proses' ? 'selected' : ''}>Proses</option>
+                <option value="Selesai" ${r.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
+              </select>
+              <button onclick="updateStatus('${r.id}')" class="bg-gray-100 hover:bg-indigo-50 text-indigo-600 p-1.5 rounded transition-colors" title="Simpan Status">
+                <i data-lucide="save" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+      
+      lucide.createIcons();
+      
+      // Sinkronisasi info teks status navigasi halaman
+      const totalData = filteredReports.length;
+      const displayStart = start + 1;
+      const displayEnd = end > totalData ? totalData : end;
+      document.getElementById('paginationInfo').textContent = `Menampilkan ${displayStart} - ${displayEnd} dari ${totalData} laporan`;
+    }
+
+    // Render Tombol Kontrol Halaman
+    function renderPagination() {
+      const btnContainer = document.getElementById('paginationButtons');
+      btnContainer.innerHTML = '';
+
+      const totalPages = Math.ceil(filteredReports.length / rowsPerPage);
+      if (totalPages <= 1) return; 
+
+      // Tombol Navigasi Halaman Sebelumnya
+      const prevBtn = document.createElement('button');
+      prevBtn.className = `px-3 py-1 text-xs font-semibold border rounded-md transition-colors ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-gray-50' : 'text-gray-700 border-gray-300 hover:bg-gray-50 bg-white'}`;
+      prevBtn.textContent = 'Sebelumnya';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderTable(); renderPagination(); } };
+      btnContainer.appendChild(prevBtn);
+
+      // Angka Halaman Numerik
+      for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `px-3 py-1 text-xs font-bold border rounded-md transition-colors ${currentPage === i ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50 bg-white'}`;
+        pageBtn.textContent = i;
+        pageBtn.onclick = () => { currentPage = i; renderTable(); renderPagination(); };
+        btnContainer.appendChild(pageBtn);
+      }
+
+      // Tombol Navigasi Halaman Selanjutnya
+      const nextBtn = document.createElement('button');
+      nextBtn.className = `px-3 py-1 text-xs font-semibold border rounded-md transition-colors ${currentPage === totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-gray-50' : 'text-gray-700 border-gray-300 hover:bg-gray-50 bg-white'}`;
+      nextBtn.textContent = 'Selanjutnya';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderTable(); renderPagination(); } };
+      btnContainer.appendChild(nextBtn);
+    }
+
+    // Aksi Simpan Status Perbaikan (Terproteksi JWT Bearer)
+    async function updateStatus(id) {
+      const newStatus = document.getElementById(`status-${id}`).value;
+      const currentToken = sessionStorage.getItem('adminToken'); 
+
+      try {
+        const response = await fetch(`/api/reports/${id}/status`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}` 
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const result = await response.json();
+        
+        if(result.success) {
+          alert('Status penanganan laporan berhasil diperbarui!');
+          // Perbarui data lokal secara sinkron tanpa refresh browser
+          const reportIdx = allReports.findIndex(r => r.id === id);
+          if(reportIdx !== -1) allReports[reportIdx].status = newStatus;
+          applyControls();
+        } else {
+          alert(result.message || 'Gagal memperbarui status.');
+        }
+      } catch (error) {
+        alert('Terjadi kesalahan otentikasi jaringan.');
+      }
+    }
+
+    function cetakLaporanHarian() {
+      window.print();
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAdminReports);
+  </script>
+</body>
+</html>
